@@ -6,6 +6,21 @@ import sys
 from math import sqrt
 
 
+# ensures that the Pi Camera drivers are loaded
+os.system("sudo modprobe bcm2835-v4l2 #")
+# GRIP pipeline object
+pl = pipeline.GripPipeline()
+
+# maximum vertical variance between pairs of viable keypoints
+MAX_Y_VARIANCE = 25
+# approx. distance between center of two strips of tape, in inches
+DIST_BETWEEN_STRIPS = 8.5
+# relative path to a calibration image
+CALIB_IMG_PATH = "../img/3feet.jpg"
+# distance between camera and peg in the calibration image, in inches
+CALIB_DIST = 36
+
+
 def find_viable_pairs(blobs, allowMultiPairing=True):
     """ Finds pairs of blobs within the image that could potentially be the peg,
         with closer (further apart) pairs being listed first.
@@ -47,51 +62,58 @@ def find_viable_pairs(blobs, allowMultiPairing=True):
     return output
 
 
-# maximum vertical variance between pairs of viable keypoints
-MAX_Y_VARIANCE = 25
-
-# approx. distance between center of two strips of tape, in inches
-DISTANCE_BETWEEN_STRIPS = 8.5
+def find_distance(dist):
+    return ( DIST_BETWEEN_STIRPS * focal_length ) / dist
 
 
+# Automatic calibration for distance detection
 # focal length only works for 480x360
 #
 #                (distance between strips in px. * distance from camera in in.)
 # focal_length = --------------------------------------------------------------
 #                                 distance between strips in in.
-# cv2.imread("../img/3feet.jpg")
 
-
-# ensures that the Pi Camera drivers are loaded
-os.system("sudo modprobe bcm2835-v4l2 #")
-
-cam = cv2.VideoCapture(0)
-print "[INFO] Video capture started"
-
-if cam.isOpened(): # attempts to get first frame 
-    rval, frame = cam.read()
-    print "[INFO] Test frame rval success"
-else:
-    rval = False
-    print "[ERROR] Test frame rval fail"
-
-# GRIP pipeline object
-pl = pipeline.GripPipeline()
-
-try:
-    while rval:
+if __name__ == "__main__":
+    print "[INFO] Calculating focal length from test image"
+    calibImg = cv2.imread(CALIB_IMG_PATH)
+    if calibImg is None:
+        print "[ERROR] Calibration image not found: " + CALIB_IMG_PATH
+        exit()
+    pl.process(calibImg)
+    try:
+        kp = find_viable_pairs(pl.find_blobs_output)[0]
+    except IndexError:
+        print "[ERROR] Calibration failed; no keypoint pairs found"
+        exit()
+    focal_length = ( kp[2] * CALIB_DIST ) / DIST_BETWEEN_STRIPS
+    
+    
+    cam = cv2.VideoCapture(0)
+    print "[INFO] Video capture started"
+    
+    if cam.isOpened(): # attempts to get first frame 
         rval, frame = cam.read()
-        
-        pl.process(frame)
-        # pl.process does not return the end image; instead, results are stored in
-        # the pipeline object (e.g. pl.find_blobs_output)
-        output = pl.find_blobs_output
-        viable_points = find_viable_pairs(output)
-        
-        print viable_points
+        print "[INFO] Test frame rval success"
+    else:
+        rval = False
+        print "[ERROR] Test frame rval fail"
+    
+    try:
+        while rval:
+            rval, frame = cam.read()
+            
+            pl.process(frame)
+            # pl.process does not return the end image; instead, results are stored in
+            # the pipeline object (e.g. pl.find_blobs_output)
+            output = pl.find_blobs_output
+            viable_points = find_viable_pairs(output)
+            
+            for i in viable_points:
+                print find_distance(i[2])
+    
+    except KeyboardInterrupt:
+        print "\n[INFO] Received KeyboardInterrupt; exiting"
+    finally: # always release video capture
+        print "[INFO] Releasing video capture"
+        cam.release()
 
-except KeyboardInterrupt:
-    print "\n[INFO] Received KeyboardInterrupt; exiting"
-finally: # always release video capture
-    print "[INFO] Releasing video capture"
-    cam.release()
