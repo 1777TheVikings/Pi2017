@@ -86,7 +86,7 @@ try:
         # pl.process does not return the end image; instead, results are stored in
         # the pipeline object (e.g. pl.find_blobs_output)
         output = pl.find_blobs_output
-        viable_points = find_viable_points(output)
+        viable_points = find_viable_pairs(output)
         
         print viable_points
 
