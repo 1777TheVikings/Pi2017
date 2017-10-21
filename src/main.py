@@ -3,6 +3,7 @@ import numpy
 import pipeline
 import os
 import sys
+from math import sqrt
 
 # maximum vertical variance between pairs of viable keypoints
 MAX_Y_VARIANCE = 25
@@ -52,13 +53,13 @@ try:
                         output.remove(j)
                         viable_pairs.append([(int(i.pt[0]), int(i.pt[1])), (int(j.pt[0]), int(i.pt[1]))])
         
-        midpoints = []
-        for i in viable_pairs:
-            midpoints.append([((i[0][0] + i[1][0]) / 2), ((i[0][1] + i[1][1]) / 2)])
-        
         data = []
-        for i in midpoints:
-            data.append(i.append((DISTANCE_BETWEEN_STRIPS * focal_length) / ))
+        for i in viable_pairs:
+            midpoint = (((i[0][0] + i[1][0]) / 2), ((i[0][1] + i[1][1]) / 2))
+            distance = sqrt(((i[1][0] - i[0][0]) ** 2) + ((i[1][1] - i[0][1]) ** 2))
+            data.append([midpoint, (DISTANCE_BETWEEN_STRIPS * focal_length) / distance])
+        
+        print data\
 
 except KeyboardInterrupt:
     print "\n[INFO] Received KeyboardInterrupt; exiting"
