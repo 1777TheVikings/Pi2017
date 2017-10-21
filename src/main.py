@@ -40,7 +40,7 @@ def find_viable_pairs(blobs, allowMultiPairing=True):
         i.append(int(dist))
         
         mp_coords = ( ((i[0].pt[0] + i[1].pt[0]) / 2), \
-                      ((i[0].pt[1] + i[1].pt[1]) / 2) 
+                      ((i[0].pt[1] + i[1].pt[1]) / 2) )
         mp = cv2.KeyPoint(mp_coords[0], mp_coords[1], 1)
         i.append(mp)
     
