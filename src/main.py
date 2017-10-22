@@ -43,7 +43,7 @@ def find_viable_pairs(blobs, allowMultiPairing=True):
     for i in blobs:
         blobs.remove(i)
         for j in blobs:
-            if j.pt[1] - MAX_Y_VARIANCE <= i.pt[1] and j.pt[1] + 10 >= i.pt[1]:
+            if j.pt[1] - MAX_Y_VARIANCE <= i.pt[1] and j.pt[1] + MAX_Y_VARIANCE >= i.pt[1]:
                 blobs.remove(j)
                 output.append([i, j])
                 if not allowMultiPairing:
@@ -62,8 +62,8 @@ def find_viable_pairs(blobs, allowMultiPairing=True):
     return output
 
 
-def find_distance(dist):
-    return ( DIST_BETWEEN_STIRPS * focal_length ) / dist
+def find_distance(dist, focal_len):
+    return ( DIST_BETWEEN_STRIPS * focal_len ) / dist
 
 
 # Automatic calibration for distance detection
@@ -109,7 +109,7 @@ if __name__ == "__main__":
             viable_points = find_viable_pairs(output)
             
             for i in viable_points:
-                print find_distance(i[2])
+                print find_distance(i[2], focal_length)
     
     except KeyboardInterrupt:
         print "\n[INFO] Received KeyboardInterrupt; exiting"
