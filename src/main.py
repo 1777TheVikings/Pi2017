@@ -109,7 +109,7 @@ if __name__ == "__main__":
             viable_points = find_viable_pairs(output)
             
             for i in viable_points:
-                print find_distance(i[2])
+                print find_distance(i[2], focal_length)
     
     except KeyboardInterrupt:
         print "\n[INFO] Received KeyboardInterrupt; exiting"
