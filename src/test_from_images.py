@@ -36,6 +36,7 @@ if __name__ == "__main__":
         print "[ERROR] Calibration failed; no keypoint pairs found"
         exit()
     focal_length = ( kp[2] * CALIB_DIST ) / DIST_BETWEEN_STRIPS
+    ddMulti = kp[2] / (( kp[0].size + kp[1].size ) / 2)
     
     for img in IMAGE_PATHS:
         print "[INFO] Processing image " + img
@@ -44,7 +45,7 @@ if __name__ == "__main__":
         # pl.process does not return the end image; instead, results are stored in
         # the pipeline object (e.g. pl.find_blobs_output)
         output = pl.find_blobs_output
-        viable_points = find_viable_pairs(output)
+        viable_points = find_viable_pairs(output, ddMulti)
         
         for i in viable_points:
             print find_distance(i[2], focal_length), i[0].pt, i[1].pt

@@ -58,11 +58,11 @@ def find_viable_pairs(blobs, distanceDiameterMulti=False, allowMultiPairing=True
             if not ( abs(i.size - j.size) <= MAX_DIAMETER_VARIANCE):
                 continue
             if distanceDiameterMulti:
-                d = sqrt( ((i[1].pt[0] - i[0].pt[0]) ** 2) + \
-                          ((i[1].pt[1] - i[0].pt[1]) ** 2) )
+                d = sqrt( ((j.pt[0] - i.pt[0]) ** 2) + \
+                          ((j.pt[1] - i.pt[1]) ** 2) )
                 avgDia = (( i.size + j.size ) / 2)
-                if not (dist / avgDia) - MAX_RATIO_VARIANCE <= distanceDiameterMulti and \
-                       (dist / avgDia) + MAX_RATIO_VARIANCE >= distanceDiameterMulti:
+                if not (d / avgDia) - MAX_RATIO_VARIANCE <= distanceDiameterMulti and \
+                       (d / avgDia) + MAX_RATIO_VARIANCE >= distanceDiameterMulti:
                     continue
                 
             blobs.remove(j)
@@ -80,6 +80,7 @@ def find_viable_pairs(blobs, distanceDiameterMulti=False, allowMultiPairing=True
         mp = cv2.KeyPoint(mp_coords[0], mp_coords[1], 1)
         i.append(mp)
     
+    output = sorted( output, key=lambda i: ((i[0].size + i[1].size) / 2) )
     return output
 
 
