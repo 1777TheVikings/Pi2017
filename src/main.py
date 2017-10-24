@@ -1,144 +1,121 @@
-import cv2
-import numpy
-import pipeline
-import os
-import sys
 from math import sqrt
+from networktables import NetworkTables
+import cv2
+import os
+import pipeline
+import numpy
 
 
-# ensures that the Pi Camera drivers are loaded
-os.system("sudo modprobe bcm2835-v4l2 #")
-# GRIP pipeline object
-pl = pipeline.GripPipeline()
-
-# maximum vertical variance between pairs of viable keypoints
-MAX_Y_VARIANCE = 25
-# maximum diameter variance between pairs of viable keypoints
-MAX_DIAMETER_VARIANCE = 20
-# maximum variance between the ratio of distance between two keypoints and
-# the average diameter of the two keypoints
-MAX_RATIO_VARIANCE = 50
-# approx. distance between center of two strips of tape, in inches
-DIST_BETWEEN_STRIPS = 8.5
 # relative path to a calibration image
 CALIB_IMG_PATH = "../img/3feet.jpg"
-# distance between camera and peg in the calibration image, in inches
+# distance between strips, in inches
+DIST_BETWEEN_STRIPS = 8.5
+# distance between camera peg in the calibration image, in inches
 CALIB_DIST = 36
+# horizontal FoV / width of video
+DEGREES_PER_PIXEL = 0.0971875
 
 
-def find_viable_pairs(blobs, distanceDiameterMulti=False, allowMultiPairing=True):
-    """ Finds pairs of blobs within the image that could potentially be the peg,
-        with closer (further apart) pairs being listed first.
-        
-        Arguments:
-            blobs - A list of keypoint objects, preferrably from pl.find_blobs_output
-            distanceDiameterMulti - A float specifying the following multiplier:
-            
-        average diameter of keypoints * distanceDiameterMulti = distance between keypoints
-            
-            allowMultiPairing - A boolean that toggles whether a blob should be
-                                allowed to be a part of several possible pairs.
-                                Defaults to 'True'.
-        
-        Returns a list in this format:
-        [ [blob 1,
-           blob 2,
-           distance between blobs as float,
-           midpoint between blobs as KeyPoint object ], ...]
+# load Pi Camera drivers
+os.system("sudo modprobe bcm2835-v4l2 #")
+
+pl = pipeline.GripPipeline()
+
+
+def find_center_of_contours(contours):
+    """ Takes a list of contours and returns the centroid
+        (center point) of each one.
     """
     output = []
-    if len(blobs) < 2:
-        return []
-    
-    for i in blobs:
-        blobs.remove(i)
-        for j in blobs:
-            if not ( j.pt[1] - MAX_Y_VARIANCE <= i.pt[1] and j.pt[1] + MAX_Y_VARIANCE >= i.pt[1] ):
-                continue
-            if not ( abs(i.size - j.size) <= MAX_DIAMETER_VARIANCE):
-                continue
-            if distanceDiameterMulti:
-                d = sqrt( ((j.pt[0] - i.pt[0]) ** 2) + \
-                          ((j.pt[1] - i.pt[1]) ** 2) )
-                avgDia = (( i.size + j.size ) / 2)
-                if not (d / avgDia) - MAX_RATIO_VARIANCE <= distanceDiameterMulti and \
-                       (d / avgDia) + MAX_RATIO_VARIANCE >= distanceDiameterMulti:
-                    continue
-                
-            blobs.remove(j)
-            output.append([i, j])
-            if not allowMultiPairing:
-                break
-    
-    for i in output:
-        dist = sqrt( ((i[1].pt[0] - i[0].pt[0]) ** 2) + \
-                     ((i[1].pt[1] - i[0].pt[1]) ** 2) )
-        i.append(int(dist))
-        
-        mp_coords = ( ((i[0].pt[0] + i[1].pt[0]) / 2), \
-                      ((i[0].pt[1] + i[1].pt[1]) / 2) )
-        mp = cv2.KeyPoint(mp_coords[0], mp_coords[1], 1)
-        i.append(mp)
-    
-    output = sorted( output, key=lambda i: ((i[0].size + i[1].size) / 2) )
+    for i in contours:
+        m = cv2.moments(i)
+        cx = int(m['m10']/m['m00'])
+        cy = int(m['m01']/m['m00'])
+        output.append((cx, cy))
     return output
 
 
 def find_distance(dist, focal_len):
+    """ Takes the distance between two strips and the focal
+        length of the camera and returns the distance between
+        the camera and the peg.
+    """
     return ( DIST_BETWEEN_STRIPS * focal_len ) / dist
 
 
-# Automatic calibration for distance detection
-# focal length only works for 480x360
-#
-#                (distance between strips in px. * distance from camera in in.)
-# focal_length = --------------------------------------------------------------
-#                                 distance between strips in in.
-
 if __name__ == "__main__":
+    print "[INFO] Connecting to NetworkTables"
+    NetworkTables.initialize(server="roboRIO-1777-FRC.local")
+    sd = NetworkTables.getTable("SmartDashboard")
+
     print "[INFO] Calculating focal length from test image"
     calibImg = cv2.imread(CALIB_IMG_PATH)
     if calibImg is None:
-        print "[ERROR] Calibration image not found: " + CALIB_IMG_PATH
+        print "[ERROR] Calibration imaage not found: " + CALIB_IMG_PATH
         exit()
     pl.process(calibImg)
-    try: 
-        kp = find_viable_pairs(pl.find_blobs_output)[0]
+    try:
+        cnt = [pl.convex_hulls_output[0], pl.convex_hulls_output[1]]
     except IndexError:
-        print "[ERROR] Calibration failed; no keypoint pairs found"
+        print "[ERROR] Calibration failed; did not find two convex hulls"
         exit()
-    # focal length calculation used by find_distance()
-    focal_length = ( kp[2] * CALIB_DIST ) / DIST_BETWEEN_STRIPS
-    # multiplier for "distanceDiameterMulti" argiment of find_distance()
-    ddMulti = kp[2] / (( kp[0].size + kp[1].size ) / 2)
+    centers = find_center_of_contours(cnt)
+    distance = sqrt( ((centers[1][0] - centers[0][0]) ** 2) + \
+                     ((centers[1][1] - centers[0][1]) ** 2) )
+    # focal length calculations used by find_distance()
+    focal_length = ( distance * CALIB_DIST ) / DIST_BETWEEN_STRIPS
+    print "[INFO] Calibration success; focal_length = " + str(focal_length)    
     
     
     cam = cv2.VideoCapture(0)
-    print "[INFO] Video capture started"
+    print "[INFO] Attempting video capture start"
     
-    if cam.isOpened(): # attempts to get first frame 
-        rval, frame = cam.read()
-        print "[INFO] Test frame rval success"
+    if cam.isOpened():
+        rval, _ = cam.read()
+        if rval:
+            print "[INFO] rval test success"
+        else:
+            print "[ERROR] rval test fail"
+            exit()
     else:
-        rval = False
-        print "[ERROR] Test frame rval fail"
+        print "[ERROR] Video capture could not be opened"
     
+    
+    if not sd.isConnected():
+        print "[INFO] Waiting for NetworkTables connection..."
+        while not sd.isConnected():
+            pass
+    print "[INFO] NetworkTables ready"
+    
+    
+    frame_num = 1
     try:
         while rval:
             rval, frame = cam.read()
+            frame = cv2.flip(frame, 1)  # camera is upside down, so vertical flip
             
             pl.process(frame)
-            # pl.process does not return the end image; instead, results are stored in
-            # the pipeline object (e.g. pl.find_blobs_output)
-            output = pl.find_blobs_output
-            viable_points = find_viable_pairs(output, ddMulti)
+            # pl.process does not return the end image; instead, results are
+            # stored in the pipeline object (e.g. pl.find_contours_output)
+            pl_out = pl.convex_hulls_output
+            if len(pl_out) > 1:
+                centers = find_center_of_contours(pl_out)
+                dist_strips = sqrt( ((centers[1][0] - centers[0][0]) ** 2) + \
+                                    ((centers[1][1] - centers[0][1]) ** 2) )
+                midpoint = ( ((centers[0][0] + centers[1][0]) / 2), \
+                             ((centers[0][1] + centers[1][1]) / 2) )
+                dist_away = find_distance(dist_strips, focal_length)
+                if midpoint[0] < 320:
+                    angle = DEGREES_PER_PIXEL * (320 - midpoint[0])
+                else:
+                    angle = -1 * (DEGREES_PER_PIXEL * (midpoint[0] - 320))
+                sd.putNumber('angle', angle)
+                sd.putNumber('distance', dist_away)
+                sd.putNumber('frame', frame_num)
+                frame += 1
             
-            for i in viable_points:
-                print find_distance(i[2], focal_length)
-    
     except KeyboardInterrupt:
         print "\n[INFO] Received KeyboardInterrupt; exiting"
-    finally: # always release video capture
+    finally:
         print "[INFO] Releasing video capture"
         cam.release()
-
