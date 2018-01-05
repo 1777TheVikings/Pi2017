@@ -170,7 +170,6 @@ if __name__ == "__main__":
             # stored in the pipeline object (e.g. pl.find_contours_output)
             pl_out = pl.convex_hulls_output
             if len(pl_out) > 1:
-                if len(pl_out) > 1:
                 contour_info = vision_utils.ContourInfo(pl_out, focal_length)
                 if TEST_OUTPUT:
                     print "angle = " + str(contour_info.angle) + \
