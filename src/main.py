@@ -170,16 +170,17 @@ if __name__ == "__main__":
             # stored in the pipeline object (e.g. pl.find_contours_output)
             pl_out = pl.convex_hulls_output
             if len(pl_out) > 1:
-                centers = find_center_of_contours(pl_out)
-                dist_strips = sqrt( ((centers[1][0] - centers[0][0]) ** 2) + \
-                                    ((centers[1][1] - centers[0][1]) ** 2) )
-                midpoint = ( ((centers[0][0] + centers[1][0]) / 2), \
-                             ((centers[0][1] + centers[1][1]) / 2) )
-                dist_away = find_distance(dist_strips, focal_length)
-                if midpoint[0] < 320:
-                    angle = DEGREES_PER_PIXEL * (320 - midpoint[0])
+                if len(pl_out) > 1:
+                contour_info = vision_utils.ContourInfo(pl_out, focal_length)
+                if TEST_OUTPUT:
+                    print "angle = " + str(contour_info.angle) + \
+                          "; distance = " + str(contour_info.dist_away) + \
+                          "; frame = " + str(frame_num)
                 else:
-                    angle = -1 * (DEGREES_PER_PIXEL * (midpoint[0] - 320))
+                    sd.putNumber('pi_angle', contour_info.angle)
+                    sd.putNumber('pi_distance', contour_info.dist_away)
+                    sd.putNumber('pi_frame', frame_num)
+                frame_num += 1
                 if TEST_OUTPUT:
                     print "angle = " + str(angle) + \
                           "; distance = " + str(dist_away) + \
@@ -190,18 +191,6 @@ if __name__ == "__main__":
                     sd.putNumber('pi_frame', frame_num)
                 frame_num += 1
             vision_utils.end_time("processing.matcher")
-
-            # if len(pl_out) > 1:
-            #     contour_info = vision_utils.ContourInfo(pl_out, focal_length)
-            #     if TEST_OUTPUT:
-            #         print "angle = " + str(contour_info.angle) + \
-            #               "; distance = " + str(contour_info.dist_away) + \
-            #               "; frame = " + str(frame_num)
-            #     else:
-            #         sd.putNumber('pi_angle', contour_info.angle)
-            #         sd.putNumber('pi_distance', contour_info.dist_away)
-            #         sd.putNumber('pi_frame', frame_num)
-            #     frame_num += 1
             
             if STREAM_VIDEO:
                 vision_utils.start_time("resize+encode")
