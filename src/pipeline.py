@@ -18,26 +18,14 @@ class GripPipeline:
 
         self.resize_image_output = None
 
-        self.__hsv_threshold_0_input = self.resize_image_output
-        self.__hsv_threshold_0_hue = [158.6330935251799, 180.0]
-        self.__hsv_threshold_0_saturation = [50.44964028776978, 255.0]
-        self.__hsv_threshold_0_value = [190.33273381294964, 255.0]
+        self.__hsv_threshold_input = self.resize_image_output
+        self.__hsv_threshold_hue = [106.83453237410072, 140.27164685908318]
+        self.__hsv_threshold_saturation = [29.81115107913669, 220.36502546689303]
+        self.__hsv_threshold_value = [204.09172661870502, 255.0]
 
-        self.hsv_threshold_0_output = None
+        self.hsv_threshold_output = None
 
-        self.__hsv_threshold_1_input = self.resize_image_output
-        self.__hsv_threshold_1_hue = [0.0, 11.918505942275035]
-        self.__hsv_threshold_1_saturation = [64.20863309352518, 255.0]
-        self.__hsv_threshold_1_value = [188.01339212250446, 255.0]
-
-        self.hsv_threshold_1_output = None
-
-        self.__cv_add_src1 = self.hsv_threshold_0_output
-        self.__cv_add_src2 = self.hsv_threshold_1_output
-
-        self.cv_add_output = None
-
-        self.__find_contours_input = self.cv_add_output
+        self.__find_contours_input = self.hsv_threshold_output
         self.__find_contours_external_only = True
 
         self.find_contours_output = None
@@ -45,15 +33,15 @@ class GripPipeline:
         self.__filter_contours_contours = self.find_contours_output
         self.__filter_contours_min_area = 50.0
         self.__filter_contours_min_perimeter = 1.0
-        self.__filter_contours_min_width = 20.0
+        self.__filter_contours_min_width = 10.0
         self.__filter_contours_max_width = 639.0
-        self.__filter_contours_min_height = 40.0
+        self.__filter_contours_min_height = 20.0
         self.__filter_contours_max_height = 479.0
         self.__filter_contours_solidity = [76.43884892086328, 100.0]
         self.__filter_contours_max_vertices = 10000.0
         self.__filter_contours_min_vertices = 1.0
-        self.__filter_contours_min_ratio = 0.0
-        self.__filter_contours_max_ratio = 100000.0
+        self.__filter_contours_min_ratio = 0.01
+        self.__filter_contours_max_ratio = 0.5
 
         self.filter_contours_output = None
 
@@ -71,20 +59,11 @@ class GripPipeline:
         (self.resize_image_output) = self.__resize_image(self.__resize_image_input, self.__resize_image_width, self.__resize_image_height, self.__resize_image_interpolation)
 
         # Step HSV_Threshold0:
-        self.__hsv_threshold_0_input = self.resize_image_output
-        (self.hsv_threshold_0_output) = self.__hsv_threshold(self.__hsv_threshold_0_input, self.__hsv_threshold_0_hue, self.__hsv_threshold_0_saturation, self.__hsv_threshold_0_value)
-
-        # Step HSV_Threshold1:
-        self.__hsv_threshold_1_input = self.resize_image_output
-        (self.hsv_threshold_1_output) = self.__hsv_threshold(self.__hsv_threshold_1_input, self.__hsv_threshold_1_hue, self.__hsv_threshold_1_saturation, self.__hsv_threshold_1_value)
-
-        # Step CV_add0:
-        self.__cv_add_src1 = self.hsv_threshold_0_output
-        self.__cv_add_src2 = self.hsv_threshold_1_output
-        (self.cv_add_output) = self.__cv_add(self.__cv_add_src1, self.__cv_add_src2)
+        self.__hsv_threshold_input = self.resize_image_output
+        (self.hsv_threshold_output) = self.__hsv_threshold(self.__hsv_threshold_input, self.__hsv_threshold_hue, self.__hsv_threshold_saturation, self.__hsv_threshold_value)
 
         # Step Find_Contours0:
-        self.__find_contours_input = self.cv_add_output
+        self.__find_contours_input = self.hsv_threshold_output
         (self.find_contours_output) = self.__find_contours(self.__find_contours_input, self.__find_contours_external_only)
 
         # Step Filter_Contours0:
@@ -122,17 +101,6 @@ class GripPipeline:
         """
         out = cv2.cvtColor(input, cv2.COLOR_BGR2HSV)
         return cv2.inRange(out, (hue[0], sat[0], val[0]),  (hue[1], sat[1], val[1]))
-
-    @staticmethod
-    def __cv_add(src1, src2):
-        """Calculates the sum of two Mats.
-        Args:
-            src1: A numpy.ndarray.
-            src2: A numpy.ndarray.
-        Returns:
-            A numpy.ndarray that is the sum.
-        """
-        return cv2.add(src1,src2)
 
     @staticmethod
     def __find_contours(input, external_only):

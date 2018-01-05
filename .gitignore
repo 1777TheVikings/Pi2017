@@ -1,2 +1,4 @@
 /src/*.pyc
+/rec/*
+**/last.mjpg
 .DS_Store
