@@ -44,27 +44,6 @@ os.system("sudo modprobe bcm2835-v4l2 #")
 pl = pipeline.GripPipeline()
 
 
-def find_center_of_contours(contours):
-    """ Takes a list of contours and returns the centroid
-        (center point) of each one.
-    """
-    output = []
-    for i in contours:
-        m = cv2.moments(i)
-        cx = int(m['m10']/m['m00'])
-        cy = int(m['m01']/m['m00'])
-        output.append((cx, cy))
-    return output
-
-
-def find_distance(dist, focal_len):
-    """ Takes the distance between two strips and the focal
-        length of the camera and returns the distance between
-        the camera and the peg.
-    """
-    return ( DIST_BETWEEN_STRIPS * focal_len ) / dist
-
-
 def led_on():
     os.system("sudo echo 1 > /sys/class/leds/led0/brightness")
 
