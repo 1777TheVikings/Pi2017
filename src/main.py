@@ -180,15 +180,6 @@ if __name__ == "__main__":
                     sd.putNumber('pi_distance', contour_info.dist_away)
                     sd.putNumber('pi_frame', frame_num)
                 frame_num += 1
-                if TEST_OUTPUT:
-                    print "angle = " + str(angle) + \
-                          "; distance = " + str(dist_away) + \
-                          "; frame = " + str(frame_num)
-                else:
-                    sd.putNumber('pi_angle', angle)
-                    sd.putNumber('pi_distance', dist_away)
-                    sd.putNumber('pi_frame', frame_num)
-                frame_num += 1
             vision_utils.end_time("processing.matcher")
             
             if STREAM_VIDEO:
