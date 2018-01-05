@@ -88,11 +88,7 @@ if __name__ == "__main__":
     except IndexError:
         print "[ERROR] Calibration failed; did not find two convex hulls"
         exit()
-    centers = find_center_of_contours(cnt)
-    distance = sqrt( ((centers[1][0] - centers[0][0]) ** 2) + \
-                     ((centers[1][1] - centers[0][1]) ** 2) )
-    # focal length calculations used by find_distance()
-    focal_length = ( distance * CALIB_DIST ) / DIST_BETWEEN_STRIPS
+    focal_length = calculate_focal_length(cnt)
     print "[INFO] Calibration success; focal_length = " + str(focal_length)    
     
     
