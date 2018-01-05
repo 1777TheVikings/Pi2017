@@ -67,10 +67,9 @@ if __name__ == "__main__":
        
     if LED_STATUS:
         # prepare status LED for use by disabling normal behavior
-        if LED_STATUS:
-            print "[INFO] Disabling normal status LED behavior"
-            os.system("sudo echo none > /sys/class/leds/led0/trigger")
-            led_off()
+        print "[INFO] Disabling normal status LED behavior"
+        os.system("sudo echo none > /sys/class/leds/led0/trigger")
+        led_off()
     
     if not TEST_OUTPUT:
         print "[INFO] Connecting to NetworkTables"
