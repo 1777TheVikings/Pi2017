@@ -115,14 +115,14 @@ if __name__ == "__main__":
         led_on()
     
     if STREAM_VIDEO:
+        stream_width = 480
+        stream_height = 640
         print "[INFO] Starting video stream..."
         server_mjpg = vision_utils.MJPG(None, threading.Lock())
         server = vision_utils.MJPGserver(server_mjpg)
         server.start()
     
     if RECORD_STREAM:
-        stream_width = 480
-        stream_height = 640
         print "[INFO] Starting recording"
         fourcc = cv2.VideoWriter_fourcc(*'MJPG')
         out = cv2.VideoWriter('last.mjpg', fourcc, 30.0, (640, 480))

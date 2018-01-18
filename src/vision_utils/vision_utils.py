@@ -18,9 +18,11 @@ class MJPG(object):
 
 
 class MJPGstream(object):
-    def __init__(self, frame_mjpg):
+    def __init__(self, frame_mjpg, width, height):
         global VIEWER_COUNT
         self.frame_mjpg = frame_mjpg
+        self.stream_width = width
+        self.stream_height = height
         VIEWER_COUNT += 1
 
     def __iter__(self):
@@ -52,6 +54,18 @@ class MJPGstream(object):
         global ALL_STREAMS
         VIEWER_COUNT -= 1
         ALL_STREAMS.remove(self)
+
+    def send_frame(self, frame):
+        frame_width, frame_height, _ = frame.shape
+        stream_frame = cv2.resize(frame,
+                                  None,
+                                  fx=frame_width / stream_width,
+                                  fy=frame_height / stream_height,
+                                  interpolation=cv2.INTER_CUBIC)
+        
+        server_mjpg.lock.acquire()
+        server_mjpg.frame = cv2.imencode(".jpg", frame)[1].tostring()
+        server_mjpg.lock.release()
 
 
 # found at https://stackoverflow.com/questions/11282218/bottle-web-framework-how-to-stop
