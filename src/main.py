@@ -103,7 +103,7 @@ if __name__ == "__main__":
     if RECORD_STREAM:
         print "[INFO] Starting recording"
         fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-        out = cv2.VideoWriter('last.mjpg', fourcc, 30.0, (640, 480))
+        out = cv2.VideoWriter('last.avi', fourcc, 30.0, (640, 480))
     
     print "[INFO] Starting detection"
     
