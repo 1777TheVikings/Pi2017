@@ -1,5 +1,6 @@
 from math import sqrt
 from networktables import NetworkTables
+from constants import *
 import vision_utils
 import cv2
 import os
@@ -14,55 +15,11 @@ frame = None
 rval = None
 
 
-# if true, outputs to console instead of NetworkTables
-# set this using "-t" instead of manually setting this
-TEST_OUTPUT = False
-# if true, use status (SD card usage) LED to indicate status
-# diable using "--no-led" instead of manually setting this
-LED_STATUS = True
-# if true, create an MJPG stream to be used by SmartDashboard
-# set this using "-s" instead of manually setting this
-STREAM_VIDEO = False
-# If true, record a video of the stream sent to the driver
-# station. Disable using "--no-rec" instaed of manually
-# setting this. See the readme in ../rec for more info.
-RECORD_STREAM = True
-# absolute path to a calibration image
-CALIB_IMG_PATH = "/home/pi/Pi2017/img/3feet.jpg"
-# distance between strips, in inches
-DIST_BETWEEN_STRIPS = 8.5
-# distance between camera peg in the calibration image, in inches
-CALIB_DIST = 36
-# horizontal FoV / width of video
-DEGREES_PER_PIXEL = 0.0971875
-
-
 # load Pi Camera drivers
 os.system("sudo modprobe bcm2835-v4l2 #")
 
 
 pl = pipeline.GripPipeline()
-
-
-def find_center_of_contours(contours):
-    """ Takes a list of contours and returns the centroid
-        (center point) of each one.
-    """
-    output = []
-    for i in contours:
-        m = cv2.moments(i)
-        cx = int(m['m10']/m['m00'])
-        cy = int(m['m01']/m['m00'])
-        output.append((cx, cy))
-    return output
-
-
-def find_distance(dist, focal_len):
-    """ Takes the distance between two strips and the focal
-        length of the camera and returns the distance between
-        the camera and the peg.
-    """
-    return ( DIST_BETWEEN_STRIPS * focal_len ) / dist
 
 
 def led_on():
@@ -88,10 +45,9 @@ if __name__ == "__main__":
        
     if LED_STATUS:
         # prepare status LED for use by disabling normal behavior
-        if LED_STATUS:
-            print "[INFO] Disabling normal status LED behavior"
-            os.system("sudo echo none > /sys/class/leds/led0/trigger")
-            led_off()
+        print "[INFO] Disabling normal status LED behavior"
+        os.system("sudo echo none > /sys/class/leds/led0/trigger")
+        led_off()
     
     if not TEST_OUTPUT:
         print "[INFO] Connecting to NetworkTables"
@@ -109,11 +65,7 @@ if __name__ == "__main__":
     except IndexError:
         print "[ERROR] Calibration failed; did not find two convex hulls"
         exit()
-    centers = find_center_of_contours(cnt)
-    distance = sqrt( ((centers[1][0] - centers[0][0]) ** 2) + \
-                     ((centers[1][1] - centers[0][1]) ** 2) )
-    # focal length calculations used by find_distance()
-    focal_length = ( distance * CALIB_DIST ) / DIST_BETWEEN_STRIPS
+    focal_length = vision_utils.calculate_focal_length(cnt)
     print "[INFO] Calibration success; focal_length = " + str(focal_length)    
     
     
@@ -141,17 +93,17 @@ if __name__ == "__main__":
         led_on()
     
     if STREAM_VIDEO:
+        stream_width = 480
+        stream_height = 640
         print "[INFO] Starting video stream..."
         server_mjpg = vision_utils.MJPG(None, threading.Lock())
         server = vision_utils.MJPGserver(server_mjpg)
         server.start()
     
     if RECORD_STREAM:
-        stream_width = 480
-        stream_height = 640
         print "[INFO] Starting recording"
         fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-        out = cv2.VideoWriter('last.mjpg', fourcc, 30.0, (640, 480))
+        out = cv2.VideoWriter('last.avi', fourcc, 30.0, (640, 480))
     
     print "[INFO] Starting detection"
     
@@ -170,38 +122,17 @@ if __name__ == "__main__":
             # stored in the pipeline object (e.g. pl.find_contours_output)
             pl_out = pl.convex_hulls_output
             if len(pl_out) > 1:
-                centers = find_center_of_contours(pl_out)
-                dist_strips = sqrt( ((centers[1][0] - centers[0][0]) ** 2) + \
-                                    ((centers[1][1] - centers[0][1]) ** 2) )
-                midpoint = ( ((centers[0][0] + centers[1][0]) / 2), \
-                             ((centers[0][1] + centers[1][1]) / 2) )
-                dist_away = find_distance(dist_strips, focal_length)
-                if midpoint[0] < 320:
-                    angle = DEGREES_PER_PIXEL * (320 - midpoint[0])
-                else:
-                    angle = -1 * (DEGREES_PER_PIXEL * (midpoint[0] - 320))
+                contour_info = vision_utils.ContourInfo(pl_out, focal_length)
                 if TEST_OUTPUT:
-                    print "angle = " + str(angle) + \
-                          "; distance = " + str(dist_away) + \
+                    print "angle = " + str(contour_info.angle) + \
+                          "; distance = " + str(contour_info.dist_away) + \
                           "; frame = " + str(frame_num)
                 else:
-                    sd.putNumber('pi_angle', angle)
-                    sd.putNumber('pi_distance', dist_away)
+                    sd.putNumber('pi_angle', contour_info.angle)
+                    sd.putNumber('pi_distance', contour_info.dist_away)
                     sd.putNumber('pi_frame', frame_num)
                 frame_num += 1
             vision_utils.end_time("processing.matcher")
-
-            # if len(pl_out) > 1:
-            #     contour_info = vision_utils.ContourInfo(pl_out, focal_length)
-            #     if TEST_OUTPUT:
-            #         print "angle = " + str(contour_info.angle) + \
-            #               "; distance = " + str(contour_info.dist_away) + \
-            #               "; frame = " + str(frame_num)
-            #     else:
-            #         sd.putNumber('pi_angle', contour_info.angle)
-            #         sd.putNumber('pi_distance', contour_info.dist_away)
-            #         sd.putNumber('pi_frame', frame_num)
-            #     frame_num += 1
             
             if STREAM_VIDEO:
                 vision_utils.start_time("resize+encode")
