@@ -87,7 +87,7 @@ if __name__ == "__main__":
     except IndexError:
         print "[ERROR] Calibration failed; did not find two convex hulls"
         exit()
-    focal_length = calculate_focal_length(cnt)
+    focal_length = vision_utils.calculate_focal_length(cnt)
     print "[INFO] Calibration success; focal_length = " + str(focal_length)    
     
     
