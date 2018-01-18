@@ -48,7 +48,7 @@ def calculate_focal_length(contours):
         Takes a list of two contours and returns a float
         indicating the focal length.
     """
-    centers = find_center_of_contours(cnt)
+    centers = find_center_of_contours(contours)
     distance = sqrt( ((centers[1][0] - centers[0][0]) ** 2) + \
                      ((centers[1][1] - centers[0][1]) ** 2) )
     return ( distance * CALIB_DIST ) / DIST_BETWEEN_STRIPS
